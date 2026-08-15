@@ -210,7 +210,7 @@ export function CatalogProvider({ children }) {
     if (Date.now() - catalogTs > CATALOG_TTL) loadFullCatalog()
   }, [catalog.length, catalogTs, loadFullCatalog])
 
-  const loadSeriesCatalog = useCallback(async () => {
+  const loadSeriesCatalog = useCallback(async ({ forceRefresh = false } = {}) => {
     if (refreshingSeriesRef.current) return
     refreshingSeriesRef.current = true
     try {
@@ -221,7 +221,7 @@ export function CatalogProvider({ children }) {
         let page = 1
         let totalPages = 1
         while (page <= totalPages && page <= MAX_SERIES_PAGES) {
-          const data = await getSeriesCatalog(page, genre)
+          const data = await getSeriesCatalog(page, genre, { forceRefresh })
           const isLiveGenre = genre === 'series-de-tv' || genre === 'k-dramas'
           let changed = false
           for (const s of data.series) {
@@ -254,6 +254,10 @@ export function CatalogProvider({ children }) {
     }
     if (Date.now() - seriesTs > CATALOG_TTL) loadSeriesCatalog()
   }, [seriesCatalog.length, seriesTs, loadSeriesCatalog])
+
+  const refreshSeriesCatalog = useCallback(async () => {
+    await loadSeriesCatalog({ forceRefresh: true })
+  }, [loadSeriesCatalog])
 
   useEffect(() => {
     if (animeCatalog.length === 0 || seriesCatalog.length === 0) return
@@ -618,7 +622,9 @@ export function CatalogProvider({ children }) {
     retryFailed,
     resetDailyLimit,
     refreshAnimeCatalog,
-    loadRecentMovies
+    refreshSeriesCatalog,
+    loadRecentMovies,
+    loadRecentSeriesEpisodes
   }
 
   return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>

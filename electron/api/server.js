@@ -121,7 +121,10 @@ function createApp() {
     try {
       const page = Math.max(1, parseInt(req.query.page, 10) || 1)
       const genre = req.query.genre || 'series-de-tv'
-      const data = await cache.get(`series:${genre}:${page}`, () => getMergedSeriesPage(page, genre), LIST_TTL)
+      const refresh = req.query.refresh === '1'
+      const data = refresh
+        ? await getMergedSeriesPage(page, genre)
+        : await cache.get(`series:${genre}:${page}`, () => getMergedSeriesPage(page, genre), LIST_TTL)
       res.json(data)
     } catch (e) {
       res.status(500).json({ status: 'error', message: e.message })

@@ -145,10 +145,11 @@ export async function getCatalog(page = 1) {
   }
 }
 
-export async function getSeriesCatalog(page = 1, genre = 'series-de-tv') {
-  const data = await request(`/list/series?page=${page}&genre=${encodeURIComponent(genre)}`, {
-    retries: 1
-  })
+export async function getSeriesCatalog(page = 1, genre = 'series-de-tv', { forceRefresh = false } = {}) {
+  const data = await request(
+    `/list/series?page=${page}&genre=${encodeURIComponent(genre)}${forceRefresh ? '&refresh=1' : ''}`,
+    { retries: 1, forceRefresh }
+  )
   const series = (data.series || []).map((s) => normalize({ ...s, type: 'serie' }))
   return {
     ...data,

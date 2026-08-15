@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useCatalog } from '../store/CatalogContext.jsx'
 import { searchIndexed } from '../search.js'
@@ -8,14 +8,23 @@ import SearchResults from '../components/SearchResults.jsx'
 import LoadingBox from '../components/LoadingBox.jsx'
 
 export default function SeriesPage() {
-  const { seriesCatalog, seriesLoading, recentSeriesEpisodes, titleIndex } = useCatalog()
+  const { seriesCatalog, seriesLoading, recentSeriesEpisodes, titleIndex, refreshSeriesCatalog, loadRecentSeriesEpisodes } = useCatalog()
   const [params] = useSearchParams()
+  const [refreshing, setRefreshing] = useState(false)
   const query = params.get('q') || ''
 
   const results = useMemo(
     () => (query ? searchIndexed(titleIndex, seriesCatalog, query) : null),
     [query, titleIndex, seriesCatalog]
   )
+
+  const onRefresh = () => {
+    if (refreshing) return
+    setRefreshing(true)
+    Promise.all([refreshSeriesCatalog(), loadRecentSeriesEpisodes({ forceRefresh: true })]).finally(() =>
+      setRefreshing(false)
+    )
+  }
 
   if (seriesLoading && seriesCatalog.length === 0) {
     return (
@@ -35,9 +44,20 @@ export default function SeriesPage() {
 
   return (
     <div className="series-page">
-      <h2 className="row-title">
-        Series <span className="category-count">({seriesCatalog.length})</span>
-      </h2>
+      <div className="row-title-row">
+        <h2 className="row-title">
+          Series <span className="category-count">({seriesCatalog.length})</span>
+        </h2>
+        <button
+          type="button"
+          className={refreshing ? 'refresh-btn spinning' : 'refresh-btn'}
+          onClick={onRefresh}
+          title="Actualizar catálogo"
+          aria-label="Actualizar catálogo"
+        >
+          ⟳
+        </button>
+      </div>
 
       {recentSeriesEpisodes.length > 0 && (
         <section className="recent-section" aria-label="Últimos capítulos">
