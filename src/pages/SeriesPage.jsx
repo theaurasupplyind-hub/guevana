@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useCatalog } from '../store/CatalogContext.jsx'
-import { searchIndexed } from '../search.js'
+import { searchIndexed, mergeResults } from '../search.js'
+import useLiveSearch from '../useLiveSearch.js'
 import { slugFromUrl } from '../api.js'
 import MovieGrid from '../components/MovieGrid.jsx'
 import SearchResults from '../components/SearchResults.jsx'
@@ -13,10 +14,13 @@ export default function SeriesPage() {
   const [refreshing, setRefreshing] = useState(false)
   const query = params.get('q') || ''
 
-  const results = useMemo(
-    () => (query ? searchIndexed(titleIndex, seriesCatalog, query) : null),
-    [query, titleIndex, seriesCatalog]
-  )
+  const { results: liveResults, loading: liveLoading } = useLiveSearch(query, { type: 'serie' })
+
+  const results = useMemo(() => {
+    if (!query) return null
+    const local = searchIndexed(titleIndex, seriesCatalog, query)
+    return mergeResults(local || [], liveResults)
+  }, [query, titleIndex, seriesCatalog, liveResults])
 
   const onRefresh = () => {
     if (refreshing) return
@@ -37,7 +41,7 @@ export default function SeriesPage() {
   if (query) {
     return (
       <div className="series-page">
-        <SearchResults items={results} query={query} empty="Sin series encontradas." />
+        <SearchResults items={results} query={query} loading={liveLoading} empty="Sin series encontradas." />
       </div>
     )
   }

@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useCatalog } from '../store/CatalogContext.jsx'
-import { searchIndexed } from '../search.js'
+import { searchIndexed, mergeResults } from '../search.js'
+import useLiveSearch from '../useLiveSearch.js'
 import IndexingBar from '../components/IndexingBar.jsx'
 import Row from '../components/Row.jsx'
 import SearchResults from '../components/SearchResults.jsx'
@@ -24,10 +25,13 @@ export default function Home() {
     [catalog, seriesCatalog, animeCatalog]
   )
 
-  const results = useMemo(
-    () => (query ? searchIndexed(titleIndex, allItems, query) : null),
-    [query, titleIndex, allItems]
-  )
+  const { results: liveResults, loading: liveLoading } = useLiveSearch(query)
+
+  const results = useMemo(() => {
+    if (!query) return null
+    const local = searchIndexed(titleIndex, allItems, query)
+    return mergeResults(local || [], liveResults)
+  }, [query, titleIndex, allItems, liveResults])
 
   const featured = useMemo(() => catalog.filter((m) => m.type === 'featured').slice(0, TOP_LARGE), [catalog])
   const topSeries = useMemo(() => topRated(seriesCatalog, TOP_LARGE), [seriesCatalog])
@@ -43,7 +47,7 @@ export default function Home() {
     <div>
       <IndexingBar />
 
-      {query && <SearchResults items={results} query={query} />}
+      {query && <SearchResults items={results} query={query} loading={liveLoading} />}
 
       {!query && (
         <>

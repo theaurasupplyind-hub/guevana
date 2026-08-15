@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useCatalog } from '../store/CatalogContext.jsx'
-import { searchIndexed, getSearchScope, getSearchDataset } from '../search.js'
+import { searchIndexed, getSearchScope, getSearchDataset, mergeResults } from '../search.js'
+import useLiveSearch from '../useLiveSearch.js'
 
 const MAX_SUGGESTIONS = 8
 
@@ -65,6 +66,9 @@ export default function Navbar() {
     [scope, catalog, seriesCatalog, animeCatalog, genresOf]
   )
 
+  const liveType = scope.key === 'movies' ? 'movie' : scope.key === 'series' ? 'serie' : scope.key === 'anime' ? 'anime' : null
+  const { results: liveResults, loading: liveLoading } = useLiveSearch(query, { type: liveType })
+
   useEffect(() => {
     const q = query.trim()
     if (!q) {
@@ -74,13 +78,14 @@ export default function Navbar() {
       return
     }
     const id = setTimeout(() => {
-      const matches = searchIndexed(titleIndex, dataset, q).slice(0, MAX_SUGGESTIONS)
-      setSuggestions(matches)
+      const local = searchIndexed(titleIndex, dataset, q)
+      const merged = mergeResults(local || [], liveResults)
+      setSuggestions(merged.slice(0, MAX_SUGGESTIONS))
       setActiveIndex(-1)
       setSuggestOpen(true)
     }, 200)
     return () => clearTimeout(id)
-  }, [query, dataset, titleIndex])
+  }, [query, dataset, titleIndex, liveResults])
 
   function resultsPath(q) {
     const { pathname } = location
@@ -238,7 +243,9 @@ export default function Navbar() {
         {suggestOpen && (
           <div id="search-menu" className="search-dropdown" role="listbox" aria-label="Sugerencias">
             {suggestions.length === 0 ? (
-              <div className="search-empty">Sin resultados para "{query.trim()}"</div>
+              <div className="search-empty">
+                {liveLoading ? `Buscando "${query.trim()}"...` : `Sin resultados para "${query.trim()}"`}
+              </div>
             ) : (
               suggestions.map((m, i) => (
                 <button

@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useCatalog } from '../store/CatalogContext.jsx'
-import { searchIndexed } from '../search.js'
+import { searchIndexed, mergeResults } from '../search.js'
+import useLiveSearch from '../useLiveSearch.js'
 import MovieGrid from '../components/MovieGrid.jsx'
 import SearchResults from '../components/SearchResults.jsx'
 
@@ -28,10 +29,13 @@ export default function CategoryPage() {
     [catalog, seriesCatalog, animeCatalog, genresOf, genreName, counts]
   )
 
-  const results = useMemo(
-    () => (query ? searchIndexed(titleIndex, list, query) : null),
-    [query, titleIndex, list]
-  )
+  const { results: liveResults, loading: liveLoading } = useLiveSearch(query)
+
+  const results = useMemo(() => {
+    if (!query) return null
+    const local = searchIndexed(titleIndex, list, query)
+    return mergeResults(local || [], liveResults)
+  }, [query, titleIndex, list, liveResults])
 
   return (
     <div className="category-page">
@@ -39,7 +43,7 @@ export default function CategoryPage() {
         ← Volver
       </Link>
       {query ? (
-        <SearchResults items={results} query={query} empty="Sin resultados en esta categoría." />
+        <SearchResults items={results} query={query} loading={liveLoading} empty="Sin resultados en esta categoría." />
       ) : (
         <>
           <h2 className="row-title">

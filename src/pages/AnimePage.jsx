@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useCatalog } from '../store/CatalogContext.jsx'
-import { searchIndexed, firstLetterOf } from '../search.js'
+import { searchIndexed, firstLetterOf, mergeResults } from '../search.js'
+import useLiveSearch from '../useLiveSearch.js'
 import MovieGrid from '../components/MovieGrid.jsx'
 import SearchResults from '../components/SearchResults.jsx'
 import LoadingBox from '../components/LoadingBox.jsx'
@@ -14,10 +15,13 @@ export default function AnimePage() {
   const query = params.get('q') || ''
   const letter = params.get('letra') || ''
 
-  const results = useMemo(
-    () => (query ? searchIndexed(titleIndex, animeCatalog, query) : null),
-    [query, titleIndex, animeCatalog]
-  )
+  const { results: liveResults, loading: liveLoading } = useLiveSearch(query, { type: 'anime' })
+
+  const results = useMemo(() => {
+    if (!query) return null
+    const local = searchIndexed(titleIndex, animeCatalog, query)
+    return mergeResults(local || [], liveResults)
+  }, [query, titleIndex, animeCatalog, liveResults])
 
   const filtered = useMemo(() => {
     if (!letter) return animeCatalog
@@ -44,7 +48,7 @@ export default function AnimePage() {
   if (query) {
     return (
       <div className="series-page">
-        <SearchResults items={results} query={query} empty="Sin animes encontrados." />
+        <SearchResults items={results} query={query} loading={liveLoading} empty="Sin animes encontrados." />
       </div>
     )
   }

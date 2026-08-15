@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useCatalog } from '../store/CatalogContext.jsx'
-import { searchIndexed, firstLetterOf } from '../search.js'
+import { searchIndexed, firstLetterOf, mergeResults } from '../search.js'
+import useLiveSearch from '../useLiveSearch.js'
 import MovieGrid from '../components/MovieGrid.jsx'
 import SearchResults from '../components/SearchResults.jsx'
 import LoadingBox from '../components/LoadingBox.jsx'
@@ -17,10 +18,13 @@ export default function MoviesPage() {
 
   const movies = useMemo(() => catalog.filter((m) => m.type !== 'featured'), [catalog])
 
-  const results = useMemo(
-    () => (query ? searchIndexed(titleIndex, movies, query) : null),
-    [query, titleIndex, movies]
-  )
+  const { results: liveResults, loading: liveLoading } = useLiveSearch(query, { type: 'movie' })
+
+  const results = useMemo(() => {
+    if (!query) return null
+    const local = searchIndexed(titleIndex, movies, query)
+    return mergeResults(local || [], liveResults)
+  }, [query, titleIndex, movies, liveResults])
 
   const filtered = useMemo(() => {
     if (!letter) return movies
@@ -46,7 +50,7 @@ export default function MoviesPage() {
   if (query) {
     return (
       <div className="series-page">
-        <SearchResults items={results} query={query} empty="Sin películas encontradas." />
+        <SearchResults items={results} query={query} loading={liveLoading} empty="Sin películas encontradas." />
       </div>
     )
   }

@@ -11,27 +11,27 @@ function absUrl(base, u) {
   }
 }
 
-function rewriteUriAttr(line, ref, baseUrl) {
+function rewriteUriAttr(line, ref, baseUrl, auth) {
   return line.replace(/URI="([^"]+)"/g, (m, uri) => {
     const abs = absUrl(baseUrl, uri)
     return abs
-      ? `URI="${PROXY_PATH}?url=${encodeURIComponent(abs)}&ref=${encodeURIComponent(ref)}"`
+      ? `URI="${PROXY_PATH}?url=${encodeURIComponent(abs)}&ref=${encodeURIComponent(ref)}${auth}"`
       : m
   })
 }
 
-function rewriteLine(line, ref, baseUrl) {
+function rewriteLine(line, ref, baseUrl, auth) {
   const trimmed = line.trim()
-  if (!trimmed || trimmed.startsWith('#')) return rewriteUriAttr(line, ref, baseUrl)
+  if (!trimmed || trimmed.startsWith('#')) return rewriteUriAttr(line, ref, baseUrl, auth)
   const abs = absUrl(baseUrl, trimmed)
   if (!abs) return line
-  return `${PROXY_PATH}?url=${encodeURIComponent(abs)}&ref=${encodeURIComponent(ref)}`
+  return `${PROXY_PATH}?url=${encodeURIComponent(abs)}&ref=${encodeURIComponent(ref)}${auth}`
 }
 
-function rewritePlaylist(text, ref, baseUrl) {
+function rewritePlaylist(text, ref, baseUrl, auth) {
   return text
     .split('\n')
-    .map((line) => rewriteLine(line, ref, baseUrl))
+    .map((line) => rewriteLine(line, ref, baseUrl, auth))
     .join('\n')
 }
 
@@ -77,6 +77,8 @@ async function handleProxy(req, res, url, ref) {
 
   const { contentType, head } = await probeHead(url, ref)
   const isPlaylist = /mpegurl/i.test(contentType) || head.includes('#EXTM3U')
+  const auth = req.get('X-Auth-Token') || req.query.token
+  const authParam = auth ? `&token=${encodeURIComponent(auth)}` : ''
 
   if (isPlaylist) {
     const full = await fetchUpstreamOk(url, ref, undefined, false)
@@ -85,7 +87,7 @@ async function handleProxy(req, res, url, ref) {
       return
     }
     const text = await full.text()
-    const rewritten = rewritePlaylist(text, ref, url)
+    const rewritten = rewritePlaylist(text, ref, url, authParam)
     res.set('Content-Type', 'application/vnd.apple.mpegurl')
     res.set('Access-Control-Allow-Origin', '*')
     res.set('Cache-Control', 'no-store')

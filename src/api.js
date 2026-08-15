@@ -1,10 +1,12 @@
 export const LOCAL_BASE = import.meta.env.VITE_EMBEDDED ? '' : 'http://127.0.0.1:3001'
 
 const STREAM_PROXY_PATH = '/stream/proxy'
+const API_TOKEN = import.meta.env.VITE_API_TOKEN || ''
 
 function proxifyStream(s) {
   if (!s || !s.referer || !s.url) return s
   const params = new URLSearchParams({ url: s.url, ref: s.referer })
+  if (API_TOKEN) params.set('token', API_TOKEN)
   const path = `${STREAM_PROXY_PATH}?${params.toString()}`
   return { ...s, url: LOCAL_BASE ? `${LOCAL_BASE}${path}` : path }
 }
@@ -265,6 +267,15 @@ export async function extractMovie(url, { cache = true, retries = 2, forceRefres
 export async function getMovieGenres(url, { retries = 1 } = {}) {
   const data = await request(`/genres?url=${encodeURIComponent(url)}`, { retries })
   return Array.isArray(data.genres) ? data.genres : []
+}
+
+export async function searchLive(query, { retries = 1 } = {}) {
+  if (!query) return []
+  const data = await request(`/search?q=${encodeURIComponent(query)}`, {
+    retries,
+    localOnly: true
+  })
+  return (data.results || []).map(normalize)
 }
 
 export async function extractFallback(title, { year = '', type = 'movie', season = '', ep = '' } = {}) {
