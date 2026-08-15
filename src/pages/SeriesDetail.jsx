@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useLocation } from 'react-router-dom'
 import { getSeriesInfo, getCachedSeriesInfo, slugFromUrl, decodeEntities } from '../api.js'
 import LoadingBox from '../components/LoadingBox.jsx'
 
@@ -9,10 +9,13 @@ export default function SeriesDetail() {
 
 export function SeriesDetailView({ basePath, localOnly = false }) {
   const { slug } = useParams()
+  const location = useLocation()
+  const stateUrl = location.state?.movie?.url
   const url =
-    basePath === '/anime'
+    stateUrl ||
+    (basePath === '/anime'
       ? `https://jkanime.net/${slug}/`
-      : `https://zonaaps.com/tvshows/${slug}/`
+      : `https://zonaaps.com/tvshows/${slug}/`)
   const cached = getCachedSeriesInfo(url)
   const [info, setInfo] = useState(cached)
   const [error, setError] = useState(null)

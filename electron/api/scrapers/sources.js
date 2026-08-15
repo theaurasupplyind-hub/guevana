@@ -1,6 +1,7 @@
 const cheerio = require('cheerio')
 const { fetchText, BASE } = require('../config.js')
 const pelisxd = require('./pelisxd.js')
+const pelisplus = require('./pelisplus.js')
 
 const AF_BASE = 'https://animeflv.net'
 
@@ -11,6 +12,14 @@ const SOURCES = [
     types: ['movie', 'serie'],
     enabled: true,
     primary: true,
+    searchable: true
+  },
+  {
+    id: 'pelisplus',
+    name: 'PelisPlus',
+    types: ['movie', 'serie'],
+    enabled: true,
+    primary: false,
     searchable: true
   },
   {
@@ -164,6 +173,8 @@ async function searchSource(sourceId, query) {
       return searchAnimeflv(query)
     case 'pelisxd':
       return pelisxd.search(query)
+    case 'pelisplus':
+      return pelisplus.search(query)
     default:
       return []
   }

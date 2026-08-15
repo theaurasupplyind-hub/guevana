@@ -2,11 +2,16 @@ const { getMoviesPage } = require('./scrapers/archive.js')
 const { getSeriesPage } = require('./scrapers/series.js')
 const { getSources } = require('./scrapers/sources.js')
 const pelisxd = require('./scrapers/pelisxd.js')
+const pelisplus = require('./scrapers/pelisplus.js')
 
 const LISTERS = {
   zonaaps: {
     movie: (page) => getMoviesPage(page),
     serie: (page, genre) => getSeriesPage(page, genre)
+  },
+  pelisplus: {
+    movie: (page) => pelisplus.listMovies(page),
+    serie: (page) => pelisplus.listSeries(page)
   },
   pelisxd: {
     movie: (page) => pelisxd.listMovies(page)
@@ -78,6 +83,8 @@ async function getMergedMoviesPage(page) {
 async function getMergedSeriesPage(page, genre) {
   const results = []
   for (const src of getSources({ types: ['serie'], searchable: true })) {
+    // PelisPlus no esta organizado por genero: se ingesta una sola vez bajo el primer genero
+    if (src.id === 'pelisplus' && genre && genre !== 'series-de-tv') continue
     const lister = LISTERS[src.id] && LISTERS[src.id].serie
     if (!lister) continue
     try {

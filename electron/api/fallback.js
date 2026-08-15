@@ -2,6 +2,7 @@ const { searchSource, getSources } = require('./scrapers/sources.js')
 const { extractMovie } = require('./scrapers/movie.js')
 const { getSeriesInfo } = require('./scrapers/series.js')
 const pelisxd = require('./scrapers/pelisxd.js')
+const pelisplus = require('./scrapers/pelisplus.js')
 const jkanime = require('./scrapers/jkanime.js')
 const cache = require('./cache.js')
 
@@ -41,11 +42,13 @@ function scoreCandidate(candidate, title, year) {
 }
 
 async function findByTitle(title, year, types) {
+  const expectedKind = types[0] || 'movie'
   const out = []
   for (const source of getSources({ types, searchable: true })) {
     try {
       const results = await searchSource(source.id, title)
       const scored = results
+        .filter((c) => !c.kind || c.kind === expectedKind)
         .map((candidate) => ({ candidate, score: scoreCandidate(candidate, title, year) }))
         .filter((x) => x.score >= 0)
         .sort((a, b) => b.score - a.score)
@@ -83,6 +86,9 @@ function findEpisodeInSeasons(seasons, season, ep) {
 async function extractFromCandidate(candidate, { type, season, ep }) {
   if (candidate.source === 'pelisxd') {
     return pelisxd.extractStreams(candidate.url)
+  }
+  if (candidate.source === 'pelisplus') {
+    return pelisplus.getStreamsForUrl(candidate.url, { season, ep })
   }
   if (candidate.kind === 'anime' || type === 'anime') {
     if (!ep) return []
