@@ -1,6 +1,8 @@
 const cheerio = require('cheerio')
 const { fetchText, BASE } = require('../config.js')
 
+const AF_BASE = 'https://animeflv.net'
+
 const SOURCES = [
   {
     id: 'zonaaps',
@@ -17,6 +19,18 @@ const SOURCES = [
     enabled: true,
     primary: true,
     searchable: true
+  },
+  {
+    // Staged: el catalogo y la busqueda responden a fetch plano, pero los streams
+    // no se embeben en el HTML (la API de video requiere token/JS). Activar cuando
+    // se resuelva la extraccion de streams.
+    id: 'animeflv',
+    name: 'AnimeFLV',
+    types: ['anime'],
+    enabled: false,
+    primary: false,
+    searchable: true,
+    staged: true
   },
   {
     id: 'mirror-xzod',
@@ -96,15 +110,52 @@ async function searchJkanime(query) {
   return out
 }
 
+function parseAnimeflvBrowse($) {
+  const out = []
+  $('ul.ListAnimes li a[href*="/anime/"]').each((_, el) => {
+    const $a = $(el)
+    const href = $a.attr('href')
+    const slug = (href.match(/\/anime\/([^/?]+)/) || [])[1]
+    if (!slug) return
+    const $img = $a.find('.Image img').first()
+    out.push({
+      title: $a.find('.Title').first().text().trim(),
+      url: `${AF_BASE}/anime/${slug}`,
+      image: $img.attr('src') || null,
+      type: 'anime',
+      slug
+    })
+  })
+  return out
+}
+
+async function listAnimeflv(page) {
+  const html = await fetchText(`${AF_BASE}/browse?page=${page}`, { referer: AF_BASE + '/' })
+  const series = parseAnimeflvBrowse(cheerio.load(html))
+  let totalPages = page
+  const pag = [...html.matchAll(/browse\?page=(\d+)/g)].map((m) => parseInt(m[1], 10))
+  if (pag.length > 0) totalPages = Math.max(page, ...pag)
+  return { series, totalPages }
+}
+
+async function searchAnimeflv(query) {
+  const html = await fetchText(`${AF_BASE}/browse?q=${encodeURIComponent(query)}`, {
+    referer: AF_BASE + '/'
+  })
+  return parseAnimeflvBrowse(cheerio.load(html)).map((a) => ({ ...a, source: 'animeflv', kind: 'anime' }))
+}
+
 async function searchSource(sourceId, query) {
   switch (sourceId) {
     case 'zonaaps':
       return searchZonaaps(query)
     case 'jkanime':
       return searchJkanime(query)
+    case 'animeflv':
+      return searchAnimeflv(query)
     default:
       return []
   }
 }
 
-module.exports = { SOURCES, getSources, searchSource }
+module.exports = { SOURCES, getSources, searchSource, listAnimeflv, searchAnimeflv }
