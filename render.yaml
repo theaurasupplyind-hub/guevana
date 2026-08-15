@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: dhub-api
+    runtime: node
+    plan: free
+    autoDeploy: false
+    buildCommand: npm ci --omit=dev
+    startCommand: node electron/run-server.cjs
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: AUTH_TOKEN
+        sync: false

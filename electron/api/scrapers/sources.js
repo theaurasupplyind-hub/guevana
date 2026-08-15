@@ -180,4 +180,50 @@ async function searchSource(sourceId, query) {
   }
 }
 
-module.exports = { SOURCES, getSources, searchSource, listAnimeflv, searchAnimeflv }
+function normalizeTitle(s = '') {
+  return String(s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .join(' ')
+}
+
+function yearOf(str = '') {
+  const m = String(str || '').match(/(19|20)\d{2}/)
+  return m ? m[1] : ''
+}
+
+function itemKey(item) {
+  return `${normalizeTitle(item.title)}|${yearOf(item.year)}`
+}
+
+async function searchAll(query) {
+  const seen = new Map()
+  const results = []
+  for (const src of getSources({ searchable: true })) {
+    try {
+      const items = await searchSource(src.id, query)
+      for (const item of items || []) {
+        const key = itemKey(item)
+        const existing = seen.get(key)
+        if (existing) {
+          const entry = { source: src.id, url: item.url }
+          if (!existing.sources.some((s) => s.url === entry.url)) existing.sources.push(entry)
+        } else {
+          const copy = { ...item, source: src.id, sources: [{ source: src.id, url: item.url }] }
+          seen.set(key, copy)
+          results.push(copy)
+        }
+      }
+    } catch {
+      /* fuente caida, seguir con las demas */
+    }
+  }
+  return results
+}
+
+module.exports = { SOURCES, getSources, searchSource, searchAll, listAnimeflv, searchAnimeflv }

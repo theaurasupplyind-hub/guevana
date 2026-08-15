@@ -20,3 +20,6 @@ Thumbs.db
 # Entorno
 .env
 .env.*
+
+# Expo
+.expo/

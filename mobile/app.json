@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "DHUB",
+    "slug": "dhub",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "dhub",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.dhub.mobile",
+      "usesCleartextTraffic": false
+    },
+    "plugins": [
+      "expo-router",
+      "expo-asset"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

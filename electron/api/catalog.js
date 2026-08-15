@@ -94,6 +94,16 @@ async function getMergedSeriesPage(page, genre) {
       /* fuente caida, seguir con las demas */
     }
   }
+  // Ingesta extra de PelisPlus: listado de series favoritas (temporadas antiguas
+  // y titulos populares como Futurama no aparecen en las "ultimas series").
+  if (!genre || genre === 'series-de-tv') {
+    try {
+      const fav = await pelisplus.listSeriesFavorites(page)
+      results.push({ source: 'pelisplus', items: fav.series, totalPages: fav.totalPages })
+    } catch {
+      /* listado de favoritas caido, continuar */
+    }
+  }
   const merged = mergeItems(results, 'series')
   return {
     status: 'success',

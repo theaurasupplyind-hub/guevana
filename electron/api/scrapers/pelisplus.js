@@ -106,6 +106,16 @@ async function listSeries(page) {
   return { series, totalPages: Math.min(totalPages, 20) }
 }
 
+async function listSeriesFavorites(page) {
+  const path = page > 1 ? `/mas-favoritas-series-n0tr3/page/${page}/` : '/mas-favoritas-series-n0tr3/'
+  const html = await fetchText(`${PPLUS_BASE}${path}`, { referer: PPLUS_BASE + '/' })
+  const series = parseCards(html).filter((c) => c.kind === 'serie')
+  let totalPages = page
+  const pag = [...html.matchAll(/page\/(\d+)\//g)].map((m) => parseInt(m[1], 10))
+  if (pag.length > 0) totalPages = Math.max(page, ...pag)
+  return { series, totalPages: Math.min(totalPages, 20) }
+}
+
 function parsePlaySources(html) {
   const $ = cheerio.load(html)
   const out = []
@@ -265,4 +275,4 @@ async function getGenresForUrl(url) {
   }
 }
 
-module.exports = { search, listMovies, listSeries, getSeriesInfo, getMovie, getStreamsForUrl, getGenresForUrl }
+module.exports = { search, listMovies, listSeries, listSeriesFavorites, getSeriesInfo, getMovie, getStreamsForUrl, getGenresForUrl }

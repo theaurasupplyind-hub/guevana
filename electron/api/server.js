@@ -11,10 +11,12 @@ const jkanime = require('./scrapers/jkanime.js')
 const pelisxd = require('./scrapers/pelisxd.js')
 const pelisplus = require('./scrapers/pelisplus.js')
 const proxy = require('./scrapers/proxy.js')
+const { searchAll } = require('./scrapers/sources.js')
 const { extractFallbackStreams } = require('./fallback.js')
 const cache = require('./cache.js')
 
 const LIST_TTL = 30 * 60 * 1000
+const SEARCH_TTL = 10 * 60 * 1000
 const GENRES_TTL = 24 * 60 * 60 * 1000
 
 const isJkUrl = (url = '') => url.includes('jkanime.net')
@@ -28,6 +30,7 @@ const meta = {
   description: 'Resolvedor local de peliculas y streams de zonaaps.com',
     endpoints: {
       list: { method: 'GET', path: '/list', params: { page: 'Numero de pagina (opcional, por defecto 1)' } },
+      search: { method: 'GET', path: '/search', params: { q: 'Termino a buscar (requerido)' }, note: 'Busqueda en vivo en todas las fuentes' },
       extract: { method: 'GET', path: '/extract', params: { url: 'URL de la pelicula en zonaaps.com (requerido)' } },
       listSeries: { method: 'GET', path: '/list/series', params: { page: 'Numero de pagina (opcional)', genre: 'Genero de series (opcional, por defecto series-de-tv)' } },
       listAnime: { method: 'GET', path: '/list/anime', params: { page: 'Numero de pagina (opcional)' } },
@@ -41,6 +44,7 @@ const meta = {
 
 function createApp() {
   const app = express()
+  const authToken = process.env.AUTH_TOKEN || ''
 
   app.use((req, res, next) => {
     res.set('Access-Control-Allow-Origin', '*')
@@ -50,7 +54,33 @@ function createApp() {
     next()
   })
 
+  app.use((req, res, next) => {
+    if (!authToken || req.path === '/healthz' || req.method === 'OPTIONS') return next()
+    const providedToken = req.get('X-Auth-Token') || req.query.token
+    if (providedToken !== authToken) {
+      return res.status(401).json({ status: 'error', message: 'Token requerido' })
+    }
+    next()
+  })
+
   app.get('/api', (req, res) => res.json(meta))
+
+  app.get('/healthz', (_req, res) => res.json({ ok: true, service: 'dhub-api' }))
+
+  app.get('/search', async (req, res) => {
+    try {
+      const q = (req.query.q || '').trim().slice(0, 120)
+      if (!q) return res.status(400).json({ status: 'error', message: 'Parametro q requerido' })
+      const results = await cache.get(
+        `search:${q.toLowerCase()}`,
+        () => searchAll(q),
+        SEARCH_TTL
+      )
+      res.json({ status: 'success', query: q, resultsCount: results.length, results })
+    } catch (e) {
+      res.status(500).json({ status: 'error', message: e.message })
+    }
+  })
 
   app.get('/list', async (req, res) => {
     try {
@@ -241,12 +271,13 @@ function createApp() {
 
 async function startServer() {
   const app = createApp()
-  const port = 3001
+  const port = Number(process.env.PORT) || 3001
+  const host = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1')
   return new Promise((resolve, reject) => {
-    const server = app.listen(port, '127.0.0.1', () => resolve({ port, server }))
+    const server = app.listen(port, host, () => resolve({ port, host, server }))
     server.on('error', (err) => {
       if (err.code === 'EADDRINUSE') {
-        reject(new Error(`El puerto ${port} ya esta en uso. Cierra otra instancia de DHUB.`))
+        reject(new Error(`El puerto ${port} ya esta en uso.`))
       } else {
         reject(err)
       }
