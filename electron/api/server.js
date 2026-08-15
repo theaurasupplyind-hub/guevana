@@ -1,10 +1,12 @@
 const express = require('express')
 const path = require('path')
 const fs = require('fs')
-const { getList, getRecentMovies } = require('./scrapers/archive.js')
+const { getRecentMovies } = require('./scrapers/archive.js')
 const { extractMovie, getMovieGenres } = require('./scrapers/movie.js')
-const { getSeriesPage, getSeriesInfo } = require('./scrapers/series.js')
+const { getSeriesInfo } = require('./scrapers/series.js')
 const { getRecentEpisodes, getRecentSeasons } = require('./scrapers/feed.js')
+const { getFeatured } = require('./scrapers/home.js')
+const { getMergedMoviesPage, getMergedSeriesPage } = require('./catalog.js')
 const jkanime = require('./scrapers/jkanime.js')
 const proxy = require('./scrapers/proxy.js')
 const { extractFallbackStreams } = require('./fallback.js')
@@ -49,7 +51,30 @@ function createApp() {
   app.get('/list', async (req, res) => {
     try {
       const page = Math.max(1, parseInt(req.query.page, 10) || 1)
-      const data = await cache.get(`list:${page}`, () => getList(page), LIST_TTL)
+      const data = await cache.get(
+        `list:${page}`,
+        async () => {
+          const [home, arch] = await Promise.all([
+            page === 1 ? getFeatured() : Promise.resolve([]),
+            getMergedMoviesPage(page)
+          ])
+          const movies = arch.movies || []
+          return {
+            status: 'success',
+            currentPage: page,
+            totalPages: arch.totalPages,
+            remainingPages: Math.max(0, arch.totalPages - page),
+            hasNextPage: page < arch.totalPages,
+            hasPrevPage: page > 1,
+            featuredCount: home.length,
+            moviesCount: movies.length,
+            totalCount: home.length + movies.length,
+            featured: home,
+            movies
+          }
+        },
+        LIST_TTL
+      )
       res.json(data)
     } catch (e) {
       res.status(500).json({ status: 'error', message: e.message })
@@ -86,7 +111,7 @@ function createApp() {
     try {
       const page = Math.max(1, parseInt(req.query.page, 10) || 1)
       const genre = req.query.genre || 'series-de-tv'
-      const data = await cache.get(`series:${genre}:${page}`, () => getSeriesPage(page, genre), LIST_TTL)
+      const data = await cache.get(`series:${genre}:${page}`, () => getMergedSeriesPage(page, genre), LIST_TTL)
       res.json(data)
     } catch (e) {
       res.status(500).json({ status: 'error', message: e.message })

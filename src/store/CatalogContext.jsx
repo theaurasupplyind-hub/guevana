@@ -47,6 +47,46 @@ function todayKey() {
   return new Date().toISOString().slice(0, 10)
 }
 
+function titleKeyOf(m) {
+  const tokens = normalizeSearch((m.title || '').replace(/\([^)]*\)/g, ' ')).join(' ')
+  const y = String(m.year || '').match(/(19|20)\d{2}/)
+  return `${tokens}|${y ? y[0] : ''}`
+}
+
+function mergeSources(item, entry) {
+  const sources = item.sources || []
+  if (sources.some((s) => s.url === entry.url)) return item
+  return { ...item, sources: [...sources, entry] }
+}
+
+function createDedupe(existing) {
+  const acc = [...existing]
+  const seenUrl = new Set(acc.map((m) => m.url))
+  const seenKey = new Map()
+  for (const m of acc) {
+    const key = titleKeyOf(m)
+    if (!seenKey.has(key)) seenKey.set(key, m)
+  }
+  const add = (item) => {
+    if (seenUrl.has(item.url)) return false
+    const key = titleKeyOf(item)
+    const existingItem = seenKey.get(key)
+    if (existingItem) {
+      const entry = { source: item.source, url: item.url }
+      const idx = acc.indexOf(existingItem)
+      const merged = mergeSources(existingItem, entry)
+      acc[idx] = merged
+      seenKey.set(key, merged)
+      return true
+    }
+    seenUrl.add(item.url)
+    seenKey.set(key, item)
+    acc.push(item)
+    return true
+  }
+  return { acc, add }
+}
+
 function computeCounts(genres) {
   const counts = {}
   for (const url of Object.keys(genres)) {
@@ -137,8 +177,7 @@ export function CatalogProvider({ children }) {
     if (refreshingRef.current) return
     refreshingRef.current = true
     try {
-      const seen = new Set(catalog.map((m) => m.url))
-      const acc = [...catalog]
+      const { acc, add } = createDedupe(catalog)
       const setAndSave = (arr) => {
         setCatalog(arr)
         catalogStorage.save(arr)
@@ -147,11 +186,7 @@ export function CatalogProvider({ children }) {
         const data = await getCatalog(page)
         let changed = false
         for (const m of data.all) {
-          if (!seen.has(m.url)) {
-            seen.add(m.url)
-            acc.push(m)
-            changed = true
-          }
+          if (add(m)) changed = true
         }
         if (changed) setAndSave(acc)
         if (page === 1) setLoading(false)
@@ -181,8 +216,7 @@ export function CatalogProvider({ children }) {
     try {
       const baseTitle = (t) => normalizeSearch((t || '').replace(/\([^)]*\)/g, ' ')).join(' ')
       const animeTitles = new Set(animeCatalog.map((a) => baseTitle(a.title)))
-      const seen = new Set(seriesCatalog.map((s) => s.url))
-      const acc = [...seriesCatalog]
+      const { acc, add } = createDedupe(seriesCatalog)
       for (const genre of SERIES_GENRES) {
         let page = 1
         let totalPages = 1
@@ -191,11 +225,8 @@ export function CatalogProvider({ children }) {
           const isLiveGenre = genre === 'series-de-tv' || genre === 'k-dramas'
           let changed = false
           for (const s of data.series) {
-            if (seen.has(s.url)) continue
             if (!isLiveGenre && animeTitles.has(baseTitle(s.title))) continue
-            seen.add(s.url)
-            acc.push({ ...s, genre })
-            changed = true
+            if (add({ ...s, genre })) changed = true
           }
           if (changed) {
             setSeriesCatalog(acc)
