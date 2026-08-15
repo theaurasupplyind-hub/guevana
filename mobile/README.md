@@ -40,4 +40,11 @@ npx eas login
 npx eas build -p android --profile preview
 ```
 
+Para el build remoto, configura también en `expo.dev` → proyecto `dhub` → Environment Variables:
+
+- `EXPO_PUBLIC_API_URL` = `https://guevana.onrender.com` (ya configurada en EAS)
+- `EXPO_PUBLIC_API_TOKEN` = el mismo valor de `AUTH_TOKEN` de Render, como variable `sensitive`
+
+El archivo `.env` local sirve para desarrollo, pero no debe contenerse en git ni usarse como único origen para el build cloud.
+
 El perfil `preview` genera un APK para distribucion directa.

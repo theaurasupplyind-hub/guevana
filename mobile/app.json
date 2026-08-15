@@ -17,6 +17,15 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "bdc27b99-b312-4a51-8aff-47ee596d08cb"
+      }
+    },
+    "owner": "jesus500"
   }
 }
