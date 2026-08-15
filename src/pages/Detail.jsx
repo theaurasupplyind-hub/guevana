@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useLocation, useNavigate, Link } from 'react-router-dom'
-import { extractMovie, getCachedMovieInfo, decodeEntities, slugFromUrl } from '../api.js'
+import { extractMovie, getCachedMovieInfo, decodeEntities, slugFromUrl, LOCAL_BASE } from '../api.js'
 import Player from '../components/Player.jsx'
 import LoadingBox from '../components/LoadingBox.jsx'
 
@@ -34,7 +34,11 @@ export default function Detail() {
 
   const fetchFresh = useCallback(async (selectFirst = true, forceRefresh = false) => {
     try {
-      const data = await extractMovie(url, { forceRefresh })
+      let data = await extractMovie(url, { forceRefresh })
+      const isAnime = url.includes('jkanime.net')
+      if (!isAnime && data.streams.length === 0) {
+        data = await extractMovie(url, { forceRefresh, requireStreams: true })
+      }
       setMovie(data)
       setError(null)
       if (selectFirst && data.streams.length > 0) {
@@ -120,6 +124,11 @@ export default function Detail() {
             <Player streamUrl={stream.url} streamType={stream.type} title={movie.title} onFatal={handleStreamFatal} />
             {movie.streams.length > 1 && (
               <div className="stream-switch">
+                {movie.base && movie.base !== LOCAL_BASE && (
+                  <span className="stream-source-note">
+                    Fuente de respaldo{typeof movie.base === 'string' ? ` · ${movie.base.replace(/^https?:\/\//, '')}` : ''}
+                  </span>
+                )}
                 {movie.streams.map((s, i) => (
                   <button
                     key={i}

@@ -808,6 +808,13 @@ button {
   border-color: var(--accent);
 }
 
+.stream-source-note {
+  width: 100%;
+  font-size: 0.8rem;
+  color: var(--accent);
+  opacity: 0.9;
+}
+
 .episode-nav {
   display: flex;
   gap: 0.75rem;

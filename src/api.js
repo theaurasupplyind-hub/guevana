@@ -1,4 +1,4 @@
-const LOCAL_BASE = import.meta.env.VITE_EMBEDDED ? '' : 'http://127.0.0.1:3001'
+export const LOCAL_BASE = import.meta.env.VITE_EMBEDDED ? '' : 'http://127.0.0.1:3001'
 
 const STREAM_PROXY_PATH = '/stream/proxy'
 
@@ -70,8 +70,11 @@ function saveCachedMovieInfo(url, data) {
   writeExtractCache(map)
 }
 
-async function request(url, { retries = 0, forceRefresh = false, localOnly = false } = {}) {
-  if (!forceRefresh && cache.has(url)) return cache.get(url)
+async function request(url, { retries = 0, forceRefresh = false, localOnly = false, requireStreams = false } = {}) {
+  if (!forceRefresh && cache.has(url)) {
+    const hit = cache.get(url)
+    if (!requireStreams || (hit.streams && hit.streams.length > 0)) return hit
+  }
 
   const order = localOnly
     ? [LOCAL_BASE]
@@ -86,10 +89,14 @@ async function request(url, { retries = 0, forceRefresh = false, localOnly = fal
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       if (data.status && data.status !== 'success') throw new Error(`API: ${data.status}`)
+      if (requireStreams && (!data.streams || data.streams.length === 0)) {
+        throw new Error(`API: sin streams en ${base || 'local'}`)
+      }
       if (!localOnly) workingBase = base
       setApiDown(false)
-      cache.set(url, data)
-      return data
+      const tagged = { ...data, base }
+      cache.set(url, tagged)
+      return tagged
     } catch (e) {
       lastError = e
     }
@@ -242,15 +249,15 @@ export async function getSeriesInfo(url, { retries = 1, forceRefresh = false, lo
   return clean
 }
 
-export async function extractMovie(url, { cache = true, retries = 2, forceRefresh = false } = {}) {
-  const data = await request(`/extract?url=${encodeURIComponent(url)}`, { retries, forceRefresh })
+export async function extractMovie(url, { cache = true, retries = 2, forceRefresh = false, requireStreams = false } = {}) {
+  const data = await request(`/extract?url=${encodeURIComponent(url)}`, { retries, forceRefresh, requireStreams })
   const clean = {
     ...data,
     title: decodeEntities(data.title),
     description: cleanDescription(data.description),
     streams: (data.streams || []).filter((s) => s && s.url).map(proxifyStream)
   }
-  if (cache) saveCachedMovieInfo(url, clean)
+  if (cache && clean.streams.length > 0) saveCachedMovieInfo(url, clean)
   return clean
 }
 
