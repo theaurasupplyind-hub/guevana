@@ -68,6 +68,7 @@ function resolveWithElectronCapture(embedUrl, referer) {
     const { BrowserWindow, session } = require('electron')
     return new Promise((resolve) => {
       let done = false
+      let candidate = null
       const finish = (url) => {
         if (done) return
         done = true
@@ -80,7 +81,11 @@ function resolveWithElectronCapture(embedUrl, referer) {
       })
       const filter = { urls: ['*://*/*'] }
       const onBeforeRequest = (details, cb) => {
-        if (/\.m3u8|mpegurl/i.test(details.url)) finish(details.url)
+        if (/\.m3u8|mpegurl/i.test(details.url)) {
+          finish(details.url)
+        } else if (!candidate && /\.mp4(\?|$)/i.test(details.url)) {
+          candidate = details.url
+        }
         cb({})
       }
       session.defaultSession.webRequest.onBeforeRequest(filter, onBeforeRequest)
@@ -90,8 +95,9 @@ function resolveWithElectronCapture(embedUrl, referer) {
         } catch {}
         if (!win.isDestroyed()) win.destroy()
       }
-      win.webContents.on('did-finish-load', () => setTimeout(() => finish(null), 5000))
-      win.webContents.on('did-fail-load', () => finish(null))
+      win.webContents.on('did-finish-load', () => setTimeout(() => finish(candidate), 5000))
+      win.webContents.on('did-fail-load', () => finish(candidate))
+      win.webContents.on('render-process-gone', () => finish(candidate))
       win.loadURL(embedUrl, { extraHeaders: `Referer: ${referer}\r\n` })
     })
   } catch {

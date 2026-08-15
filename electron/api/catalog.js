@@ -1,11 +1,15 @@
 const { getMoviesPage } = require('./scrapers/archive.js')
 const { getSeriesPage } = require('./scrapers/series.js')
 const { getSources } = require('./scrapers/sources.js')
+const pelisxd = require('./scrapers/pelisxd.js')
 
 const LISTERS = {
   zonaaps: {
     movie: (page) => getMoviesPage(page),
     serie: (page, genre) => getSeriesPage(page, genre)
+  },
+  pelisxd: {
+    movie: (page) => pelisxd.listMovies(page)
   }
 }
 

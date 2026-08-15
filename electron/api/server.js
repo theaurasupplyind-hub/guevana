@@ -8,6 +8,7 @@ const { getRecentEpisodes, getRecentSeasons } = require('./scrapers/feed.js')
 const { getFeatured } = require('./scrapers/home.js')
 const { getMergedMoviesPage, getMergedSeriesPage } = require('./catalog.js')
 const jkanime = require('./scrapers/jkanime.js')
+const pelisxd = require('./scrapers/pelisxd.js')
 const proxy = require('./scrapers/proxy.js')
 const { extractFallbackStreams } = require('./fallback.js')
 const cache = require('./cache.js')
@@ -16,6 +17,7 @@ const LIST_TTL = 30 * 60 * 1000
 const GENRES_TTL = 24 * 60 * 60 * 1000
 
 const isJkUrl = (url = '') => url.includes('jkanime.net')
+const isPxdUrl = (url = '') => url.includes('pelisxd.com')
 
 const meta = {
   status: 'ready',
@@ -89,7 +91,11 @@ function createApp() {
     try {
       const url = req.query.url
       if (!url) return res.status(400).json({ status: 'error', message: 'Parametro url requerido' })
-      const data = isJkUrl(url) ? await jkanime.extractEpisode(url) : await extractMovie(url)
+      const data = isJkUrl(url)
+        ? await jkanime.extractEpisode(url)
+        : isPxdUrl(url)
+          ? await pelisxd.getMovie(url)
+          : await extractMovie(url)
       res.json(data)
     } catch (e) {
       res.status(500).json({ status: 'error', message: e.message })

@@ -1,6 +1,7 @@
 const { searchSource, getSources } = require('./scrapers/sources.js')
 const { extractMovie } = require('./scrapers/movie.js')
 const { getSeriesInfo } = require('./scrapers/series.js')
+const pelisxd = require('./scrapers/pelisxd.js')
 const jkanime = require('./scrapers/jkanime.js')
 const cache = require('./cache.js')
 
@@ -80,6 +81,9 @@ function findEpisodeInSeasons(seasons, season, ep) {
 }
 
 async function extractFromCandidate(candidate, { type, season, ep }) {
+  if (candidate.source === 'pelisxd') {
+    return pelisxd.extractStreams(candidate.url)
+  }
   if (candidate.kind === 'anime' || type === 'anime') {
     if (!ep) return []
     const epUrl = `${candidate.url}${normalizeNum(ep)}/`
