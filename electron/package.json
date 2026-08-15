@@ -1,0 +1,5 @@
+{
+  "name": "dhub-electron-backend",
+  "private": true,
+  "type": "commonjs"
+}
