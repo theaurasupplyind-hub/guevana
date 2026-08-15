@@ -266,6 +266,16 @@ export async function getMovieGenres(url, { retries = 1 } = {}) {
   return Array.isArray(data.genres) ? data.genres : []
 }
 
+export async function extractFallback(title, { year = '', type = 'movie', season = '', ep = '' } = {}) {
+  const params = new URLSearchParams({ title, year, type, season, ep })
+  const data = await request(`/extract/fallback?${params.toString()}`, { retries: 1, localOnly: true })
+  return {
+    ...data,
+    title: decodeEntities(data.title),
+    streams: (data.streams || []).filter((s) => s && s.url).map(proxifyStream)
+  }
+}
+
 function normalize(item) {
   const url = item.url || ''
   return {

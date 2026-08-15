@@ -7,6 +7,7 @@ const { getSeriesPage, getSeriesInfo } = require('./scrapers/series.js')
 const { getRecentEpisodes, getRecentSeasons } = require('./scrapers/feed.js')
 const jkanime = require('./scrapers/jkanime.js')
 const proxy = require('./scrapers/proxy.js')
+const { extractFallbackStreams } = require('./fallback.js')
 const cache = require('./cache.js')
 
 const LIST_TTL = 30 * 60 * 1000
@@ -27,7 +28,8 @@ const meta = {
       listEpisodes: { method: 'GET', path: '/list/episodes', params: { page: 'Numero de pagina (opcional)', refresh: 'Forzar recarga (1)' } },
       listRecentMovies: { method: 'GET', path: '/list/movies/recent', params: { refresh: 'Forzar recarga (1)' }, note: 'Ultimas peliculas por fecha de estreno' },
       listSeasons: { method: 'GET', path: '/list/seasons', params: { page: 'Numero de pagina (opcional)' } },
-      seriesInfo: { method: 'GET', path: '/series/info', params: { url: 'URL de la serie (requerido)' } }
+      seriesInfo: { method: 'GET', path: '/series/info', params: { url: 'URL de la serie (requerido)' } },
+      extractFallback: { method: 'GET', path: '/extract/fallback', params: { title: 'Titulo a buscar (requerido)', year: 'Anio (opcional)', type: 'movie|serie|anime', season: 'Temporada (para serie)', ep: 'Numero de episodio' } }
     }
 }
 
@@ -63,6 +65,17 @@ function createApp() {
       const url = req.query.url
       if (!url) return res.status(400).json({ status: 'error', message: 'Parametro url requerido' })
       const data = isJkUrl(url) ? await jkanime.extractEpisode(url) : await extractMovie(url)
+      res.json(data)
+    } catch (e) {
+      res.status(500).json({ status: 'error', message: e.message })
+    }
+  })
+
+  app.get('/extract/fallback', async (req, res) => {
+    try {
+      const { title, year, type, season, ep } = req.query
+      if (!title) return res.status(400).json({ status: 'error', message: 'Parametro title requerido' })
+      const data = await extractFallbackStreams({ title, year, type, season, ep })
       res.json(data)
     } catch (e) {
       res.status(500).json({ status: 'error', message: e.message })

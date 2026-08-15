@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useLocation, useNavigate, Link } from 'react-router-dom'
-import { extractMovie, getCachedMovieInfo, decodeEntities, slugFromUrl, LOCAL_BASE } from '../api.js'
+import { extractMovie, extractFallback, getCachedMovieInfo, decodeEntities, slugFromUrl, LOCAL_BASE } from '../api.js'
 import Player from '../components/Player.jsx'
 import LoadingBox from '../components/LoadingBox.jsx'
 
@@ -16,6 +16,8 @@ export default function Detail() {
   const episodeList = location.state?.episodes || null
   const currentIndex = location.state?.currentIndex ?? -1
   const seriesTitle = location.state?.seriesTitle || fromCard?.title || ''
+  const season = location.state?.season ?? episodeList?.[currentIndex]?.season ?? ''
+  const episodeNum = location.state?.episodeNum ?? episodeList?.[currentIndex]?.num ?? ''
   const nextEp = episodeList ? episodeList[currentIndex + 1] : null
   const prevEp = episodeList ? episodeList[currentIndex - 1] : null
 
@@ -32,27 +34,64 @@ export default function Detail() {
   const streamRetriesRef = useRef(0)
   const streamIndexRef = useRef(0)
 
-  const fetchFresh = useCallback(async (selectFirst = true, forceRefresh = false) => {
-    try {
-      let data = await extractMovie(url, { forceRefresh })
+  const tryFallback = useCallback(
+    async (title, year) => {
+      if (!title) return null
       const isAnime = url.includes('jkanime.net')
-      if (!isAnime && data.streams.length === 0) {
-        data = await extractMovie(url, { forceRefresh, requireStreams: true })
+      const type = isAnime
+        ? 'anime'
+        : url.includes('/tvshows/') || fromCard?.type === 'serie'
+          ? 'serie'
+          : 'movie'
+      try {
+        const data = await extractFallback(title, { year: year || '', type, season, ep: episodeNum })
+        if (data && data.streams.length > 0) {
+          const merged = {
+            ...data,
+            base: data.matched ? `fallback:${data.matched.source}` : 'fallback'
+          }
+          setMovie((prev) => ({ ...(prev || {}), ...merged }))
+          setError(null)
+          streamIndexRef.current = 0
+          setStream(data.streams[0])
+          return merged
+        }
+      } catch {
+        /* fallback sin resultado, continuar con el flujo normal */
       }
-      setMovie(data)
-      setError(null)
-      if (selectFirst && data.streams.length > 0) {
-        streamIndexRef.current = 0
-        setStream(data.streams[0])
-      } else if (data.streams.length === 0) {
-        setError('Esta película no tiene streams disponibles.')
-      }
-      return data
-    } catch (e) {
-      setError(`No se pudo contactar la API (${e.message}).`)
       return null
-    }
-  }, [url])
+    },
+    [url, fromCard, season, episodeNum]
+  )
+
+  const fetchFresh = useCallback(
+    async (selectFirst = true, forceRefresh = false) => {
+      try {
+        let data = await extractMovie(url, { forceRefresh })
+        const isAnime = url.includes('jkanime.net')
+        if (!isAnime && data.streams.length === 0) {
+          data = await extractMovie(url, { forceRefresh, requireStreams: true })
+        }
+        if (data.streams.length === 0) {
+          const fb = await tryFallback(seriesTitle || data.title, data.year)
+          if (fb) return fb
+        }
+        setMovie(data)
+        setError(null)
+        if (selectFirst && data.streams.length > 0) {
+          streamIndexRef.current = 0
+          setStream(data.streams[0])
+        } else if (data.streams.length === 0) {
+          setError('No se encontró ningún stream activo en ninguna fuente.')
+        }
+        return data
+      } catch (e) {
+        setError(`No se pudo contactar la API (${e.message}).`)
+        return null
+      }
+    },
+    [url, tryFallback, seriesTitle]
+  )
 
   useEffect(() => {
     setMovie(getCachedMovieInfo(url))
@@ -107,6 +146,8 @@ export default function Detail() {
           seriesTitle,
           episodes: episodeList,
           currentIndex: index,
+          season: ep.season,
+          episodeNum: ep.num,
           from: backTo
         }
       })

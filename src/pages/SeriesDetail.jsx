@@ -127,6 +127,8 @@ export function SeriesDetailView({ basePath, localOnly = false }) {
                   seriesTitle: info.title,
                   episodes: flatEpisodes,
                   currentIndex: epIndex,
+                  season: ep.season,
+                  episodeNum: ep.num,
                   from: `${basePath}/${slug}`
                 }}
                 className="episode-card"
