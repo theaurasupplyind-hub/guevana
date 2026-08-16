@@ -258,11 +258,23 @@ button {
 }
 
 .logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   color: var(--accent);
   font-size: 1.35rem;
   font-weight: 800;
   letter-spacing: 0.05em;
   white-space: nowrap;
+  text-decoration: none;
+}
+
+.logo-img {
+  display: block;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
 .search input {

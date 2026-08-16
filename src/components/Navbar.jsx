@@ -154,7 +154,8 @@ export default function Navbar() {
   return (
     <header className="navbar titlebar" onDoubleClick={onBarDoubleClick}>
       <Link to="/" className="logo no-drag" onClick={() => setQuery('')}>
-        DHUB
+        <img className="logo-img" src="/kristo.png" alt="DHUB" />
+        <span>DHUB</span>
       </Link>
 
       <nav className="nav no-drag" aria-label="Navegación principal">

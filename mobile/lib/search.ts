@@ -27,3 +27,20 @@ export function firstLetterOf(title = '') {
 export function slugFromUrl(url = '') {
   return url.replace(/\/+$/, '').split('/').pop() || 'item'
 }
+
+const MONTHS: Record<string, number> = {
+  jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+  jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12
+}
+
+export function itemDate(item: { year?: string | number | null }): number {
+  const str = String(item.year || '')
+  const full = str.match(/([a-z]+)\.\s*(\d{1,2}),\s*(\d{4})/i)
+  if (full) {
+    const month = MONTHS[full[1].toLowerCase()]
+    if (month) return new Date(+full[3], month - 1, +full[2]).getTime()
+    return new Date(+full[3], 0, 1).getTime()
+  }
+  const year = str.match(/(\d{4})/)
+  return year ? new Date(+year[1], 0, 1).getTime() : 0
+}

@@ -12,7 +12,10 @@ export default function HomeScreen() {
       <View className="px-4 pb-8 pt-8">
         <View className="mb-7 flex-row items-center justify-between">
           <View>
-            <Text className="text-sm font-bold uppercase tracking-[3px] text-accent">DHUB</Text>
+            <View className="flex-row items-center gap-2">
+              <Image source={require('../../assets/icon.png')} className="h-8 w-8 rounded-lg" resizeMode="cover" />
+              <Text className="text-sm font-bold uppercase tracking-[3px] text-accent">DHUB</Text>
+            </View>
             <Text className="mt-2 text-3xl font-black text-white">Tu cine, en un solo lugar</Text>
           </View>
           <Pressable className="rounded-full bg-panel px-4 py-3" onPress={reload}>

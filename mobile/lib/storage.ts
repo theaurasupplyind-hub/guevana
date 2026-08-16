@@ -9,6 +9,17 @@ async function load<T>(key: string, fallback: T): Promise<T> {
   }
 }
 
+export type CatalogMeta = { page: number; totalPages: number }
+
+const META_FALLBACK: CatalogMeta = { page: 1, totalPages: 0 }
+
+function metaApi(key: string) {
+  return {
+    load: () => load<CatalogMeta>(key, META_FALLBACK),
+    save: (value: CatalogMeta) => save(key, value)
+  }
+}
+
 async function save<T>(key: string, value: T) {
   try {
     await AsyncStorage.setItem(key, JSON.stringify(value))
@@ -42,6 +53,9 @@ export const storage = {
     load: () => load('dhub.mobile.recent.movies.v1', []),
     save: (value: unknown[]) => save('dhub.mobile.recent.movies.v1', value)
   },
+  catalogMeta: metaApi('dhub.mobile.catalog.meta.v1'),
+  seriesMeta: metaApi('dhub.mobile.series.meta.v1'),
+  animeMeta: metaApi('dhub.mobile.anime.meta.v1'),
   extracted: {
     load: () => load<Record<string, unknown>>('dhub.mobile.extracted.v1', {}),
     save: (value: Record<string, unknown>) => save('dhub.mobile.extracted.v1', value)

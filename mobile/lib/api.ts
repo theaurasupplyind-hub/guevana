@@ -73,7 +73,7 @@ async function request<T>(path: string, options: { forceRefresh?: boolean } = {}
 }
 
 export async function getCatalog(page = 1, forceRefresh = false) {
-  const data = await request<{ featured?: CatalogItem[]; movies?: CatalogItem[] }>(
+  const data = await request<{ featured?: CatalogItem[]; movies?: CatalogItem[]; totalPages?: number }>(
     `/list?page=${page}${forceRefresh ? '&refresh=1' : ''}`,
     { forceRefresh }
   )
@@ -83,7 +83,7 @@ export async function getCatalog(page = 1, forceRefresh = false) {
 }
 
 export async function getSeriesCatalog(page = 1, genre = 'series-de-tv', forceRefresh = false) {
-  const data = await request<{ series?: CatalogItem[] }>(
+  const data = await request<{ series?: CatalogItem[]; totalPages?: number }>(
     `/list/series?page=${page}&genre=${encodeURIComponent(genre)}${forceRefresh ? '&refresh=1' : ''}`,
     { forceRefresh }
   )
@@ -92,7 +92,7 @@ export async function getSeriesCatalog(page = 1, genre = 'series-de-tv', forceRe
 }
 
 export async function getAnimeCatalog(page = 1, forceRefresh = false) {
-  const data = await request<{ series?: CatalogItem[] }>(
+  const data = await request<{ series?: CatalogItem[]; totalPages?: number }>(
     `/list/anime?page=${page}${forceRefresh ? '&refresh=1' : ''}`,
     { forceRefresh }
   )
